@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบยืม-คืนอุปกรณ์กายภาพบำบัด</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+  :root {
+    --blue-50:#E6F1FB;--blue-100:#B5D4F4;--blue-600:#185FA5;--blue-800:#0C447C;--blue-900:#042C53;
+    --teal-50:#E1F5EE;--teal-600:#0F6E56;--teal-800:#085041;--green-50:#EAF3DE;--green-600:#3B6D11;
+    --amber-50:#FAEEDA;--amber-600:#854F0B;--red-50:#FCEBEB;--red-600:#A32D2D;
+    --gray-50:#F1EFE8;--gray-100:#D3D1C7;--gray-400:#888780;--gray-600:#5F5E5A;--gray-800:#444441;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Sarabun',sans-serif;background:#f0f4f8;color:#1a2636;min-height:100vh;}
+
+  /* ===== หน้าล็อกอิน (สไตล์เพื่อน: การ์ดขาวบนพื้นน้ำเงิน) ===== */
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 20% 20%,#0C447C 0%,#042C53 55%,#021c38 100%);}
+  .login-card{width:100%;max-width:400px;background:#fff;border-radius:14px;padding:32px 28px;box-shadow:0 20px 50px rgba(2,28,56,0.35);}
+  .login-logo-row{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+  .login-logo{width:42px;height:42px;background:var(--blue-600);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .login-logo svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:1.8;}
+  .login-logo-row h2{font-size:16px;font-weight:600;color:var(--blue-900);}
+  .login-logo-row p{font-size:12px;color:var(--gray-600);margin-top:2px;}
+  .auth-toggle{text-align:center;font-size:13px;color:var(--gray-600);margin-top:10px;}
+  .auth-toggle button{background:none;border:none;color:var(--blue-600);font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;padding:0;margin-left:2px;}
+  .auth-toggle button:hover{text-decoration:underline;}
+  .admin-link-row{text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-100);}
+  .admin-link-row a{color:var(--gray-400);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+  .admin-link-row a:hover{color:var(--gray-600);}
+  .admin-link-row svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;}
+  .auth-form{display:none;}.auth-form.active{display:block;}
+  .dob-wrap{position:relative;}
+  .dob-wrap input[type=text]{padding-right:42px;}
+  .dob-icon-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:none;background:transparent;color:var(--gray-400);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:6px;}
+  .dob-icon-btn:hover{background:var(--gray-50);color:var(--blue-600);}
+  .dob-icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;}
+  .dob-native{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+
+  /* ===== ระบบหลัก ===== */
+  #appRoot{display:none;}
+  header{background:var(--blue-900);color:#fff;padding:0;border-bottom:3px solid var(--blue-600);}
+  .header-inner{max-width:1100px;margin:0 auto;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px;}
+  .header-left{display:flex;align-items:center;gap:18px;}
+  .header-logo{width:44px;height:44px;background:var(--blue-600);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .header-logo svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:1.8;}
+  .header-title h1{font-size:18px;font-weight:600;}
+  .header-title p{font-size:12px;color:var(--blue-100);margin-top:2px;}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .pill{font-size:12px;background:rgba(255,255,255,0.1);padding:6px 12px;border-radius:20px;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .pill svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:1.8;}
+  .pill-admin{background:var(--amber-600);font-weight:600;}
+  .pill-user{cursor:pointer;}.pill-user:hover{background:rgba(255,255,255,0.18);}
+  .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .logout-btn{background:rgba(255,255,255,0.12);border:none;color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;}
+  .logout-btn:hover{background:rgba(255,255,255,0.22);}
+  .logout-btn svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:1.8;}
+
+  .main{max-width:1100px;margin:0 auto;padding:28px 32px;}
+  .tabs{display:flex;background:#fff;border:1px solid var(--gray-100);border-radius:10px;overflow:hidden;margin-bottom:28px;box-shadow:0 1px 4px rgba(0,0,0,0.05);}
+  .tab-btn{flex:1;padding:14px;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--gray-600);cursor:pointer;border-right:1px solid var(--gray-100);display:flex;align-items:center;justify-content:center;gap:8px;transition:0.2s;font-family:inherit;}
+  .tab-btn:last-child{border-right:none;}
+  .tab-btn.active{background:var(--blue-50);color:var(--blue-800);font-weight:600;}
+  .tab-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;}
+  .tab-panel{display:none;}.tab-panel.active{display:block;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:16px;margin-bottom:28px;}
+  .stat-card{background:#fff;border:1px solid var(--gray-100);border-radius:10px;padding:18px 20px;}
+  .stat-label{font-size:12px;color:var(--gray-600);margin-bottom:6px;font-weight:500;}
+  .stat-value{font-size:28px;font-weight:600;color:var(--blue-800);}
+  .card{background:#fff;border:1px solid var(--gray-100);border-radius:12px;padding:24px;}
+  .card+.card{margin-top:20px;}
+  .card-title{font-size:15px;font-weight:600;color:var(--blue-900);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;gap:8px;}
+  .card-title svg{width:18px;height:18px;stroke:var(--blue-600);fill:none;stroke-width:1.8;}
+  .form-group{margin-bottom:16px;}
+  .form-label{display:block;font-size:13px;font-weight:500;color:var(--gray-800);margin-bottom:6px;}
+  .form-label span.req{color:var(--red-600);}
+  .form-control{width:100%;padding:9px 12px;border:1px solid var(--gray-100);border-radius:7px;font-family:inherit;font-size:14px;background:#fff;transition:0.2s;color:#1a2636;}
+  .form-control:focus{outline:none;border-color:var(--blue-600);box-shadow:0 0 0 3px rgba(24,95,165,0.12);}
+  select.form-control{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:34px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235F5E5A' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 10px center;background-size:15px;}
+
+  .equip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:18px;}
+  .equip-card{border:2px solid var(--gray-100);border-radius:10px;padding:14px 16px;cursor:pointer;transition:0.2s;background:#fff;}
+  .equip-card:hover{border-color:var(--blue-600);background:var(--blue-50);}
+  .equip-card.selected{border-color:var(--blue-600);background:var(--blue-50);}
+  .equip-card.borrowed{border-color:var(--amber-600);background:var(--amber-50);opacity:0.6;cursor:not-allowed;}
+  .equip-card.damaged{border-color:var(--red-600);background:var(--red-50);opacity:0.6;cursor:not-allowed;}
+  .equip-name{font-size:14px;font-weight:600;color:var(--blue-900);margin-bottom:4px;}
+  .equip-id{font-size:11px;color:var(--gray-400);margin-bottom:8px;}
+  .equip-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+  .equip-status.available{background:var(--green-50);color:var(--green-600);}
+  .equip-status.borrowed{background:var(--amber-50);color:var(--amber-600);}
+  .equip-status.damaged{background:var(--red-50);color:var(--red-600);}
+  .equip-status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+  /* การ์ดผู้ยืม (ของเรา) */
+  .borrower-card{background:var(--blue-50);border:1px solid var(--blue-100);border-radius:9px;padding:14px 16px;margin-bottom:16px;}
+  .bc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--blue-100);}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--blue-600);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;flex-shrink:0;}
+  .bc-name{font-size:14px;font-weight:600;color:var(--blue-900);}
+  .bc-sub{font-size:11px;color:var(--blue-600);}
+  .bc-row{display:flex;justify-content:space-between;padding:3px 0;font-size:13px;}
+  .bc-row .bl{color:var(--gray-600);}.bc-row .bv{color:var(--blue-900);font-weight:600;}
+  .bc-hint{font-size:11px;color:var(--gray-400);margin-top:8px;display:flex;align-items:center;gap:5px;}
+  .bc-hint svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;}
+
+  .section-label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gray-400);margin:2px 0 12px;}
+  .quick-row{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .chip{border:1px solid var(--gray-100);background:#fff;color:var(--gray-800);padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+  .chip:hover{border-color:var(--blue-600);color:var(--blue-800);background:var(--blue-50);}
+  .chip.active{border-color:var(--blue-600);background:var(--blue-50);color:var(--blue-800);}
+  .field-warn{font-size:12px;color:var(--amber-600);margin-top:7px;display:none;align-items:flex-start;gap:5px;line-height:1.4;}
+  .field-warn.show{display:flex;}
+  .field-warn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0;margin-top:1px;}
+
+  .condition-box{background:var(--gray-50);border:1px solid var(--gray-100);border-radius:9px;padding:12px 14px;margin-bottom:16px;}
+  .cb-title{font-size:12px;font-weight:600;color:var(--gray-800);margin-bottom:5px;display:flex;align-items:center;gap:6px;}
+  .cb-title svg{width:14px;height:14px;stroke:var(--amber-600);fill:none;stroke-width:1.9;}
+  .cb-text{font-size:12px;color:var(--gray-600);line-height:1.55;margin-bottom:10px;}
+  .cb-check{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--gray-800);cursor:pointer;}
+  .cb-check input{margin-top:2px;width:16px;height:16px;cursor:pointer;accent-color:var(--blue-600);flex-shrink:0;}
+
+  .my-toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--gray-800);cursor:pointer;white-space:nowrap;}
+  .my-toggle input{width:16px;height:16px;cursor:pointer;accent-color:var(--blue-600);}
+
+  .admin-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray-100);}
+  .admin-row:last-child{border-bottom:none;}
+  .admin-row-name{font-size:14px;font-weight:600;color:var(--blue-900);}
+  .admin-row-id{font-size:11px;color:var(--gray-400);}
+  .act-btns{display:flex;gap:6px;flex-wrap:wrap;}
+  .btn-sm{padding:5px 12px;font-size:12px;border-radius:6px;border:1px solid;cursor:pointer;font-family:inherit;font-weight:600;}
+  .btn-ok{background:var(--green-50);color:var(--green-600);border-color:var(--green-600);}
+  .btn-damaged{background:var(--red-50);color:var(--red-600);border-color:var(--red-600);}
+  .btn-del{background:#fff;color:var(--gray-600);border-color:var(--gray-100);}
+  .btn-del:hover{background:var(--red-50);color:var(--red-600);border-color:var(--red-600);}
+  .btn-edit{background:var(--blue-50);color:var(--blue-600);border-color:var(--blue-600);}
+  .btn-edit:hover{background:var(--blue-100);}
+
+  .btn{padding:10px 24px;border:none;border-radius:7px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:0.1s;}
+  .btn:active{transform:scale(0.98);}.btn:disabled{opacity:.6;cursor:default;}
+  .btn-primary{background:var(--blue-800);color:#fff;}.btn-primary:hover{background:var(--blue-900);}
+  .btn-success{background:var(--teal-600);color:#fff;}.btn-success:hover{background:var(--teal-800);}
+  .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead tr{background:var(--gray-50);}
+  th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-600);text-transform:uppercase;border-bottom:1px solid var(--gray-100);white-space:nowrap;}
+  td{padding:11px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle;}
+  .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .badge-borrowed{background:var(--amber-50);color:var(--amber-600);}
+  .badge-returned{background:var(--green-50);color:var(--green-600);}
+  .badge-overdue{background:var(--red-50);color:var(--red-600);}
+  .badge-damaged{background:var(--red-50);color:var(--red-600);}
+  .badge-available{background:var(--green-50);color:var(--green-600);}
+
+  .alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;}
+  .alert svg{width:18px;height:18px;stroke:currentColor;fill:none;margin-top:1px;flex-shrink:0;}
+  .alert-success{background:var(--green-50);color:var(--green-600);}
+  .alert-error{background:var(--red-50);color:var(--red-600);}
+  .selected-equip-info{background:var(--blue-50);border:1px solid var(--blue-100);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--blue-800);}
+  .empty-state{color:var(--gray-400);padding:20px 12px;text-align:center;font-size:13px;}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* โมดัลโปรไฟล์ */
+  .modal-overlay{position:fixed;inset:0;background:rgba(4,12,24,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal-card{background:#fff;border-radius:14px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 24px 64px -16px rgba(0,0,0,.45);}
+  .modal-head{display:flex;align-items:center;gap:12px;padding:20px 22px 16px;background:var(--blue-900);position:relative;color:#fff;}
+  .modal-head .avatar{width:44px;height:44px;font-size:18px;}
+  .modal-name{font-size:16px;font-weight:600;}
+  .modal-sub{font-size:12px;color:var(--blue-100);margin-top:2px;}
+  .modal-close{position:absolute;top:12px;right:12px;width:28px;height:28px;border:none;background:rgba(255,255,255,.12);color:#fff;border-radius:7px;cursor:pointer;font-size:14px;}
+  .modal-close:hover{background:rgba(255,255,255,.22);}
+  .modal-body{padding:8px 22px;}
+  .pm-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--gray-100);font-size:14px;gap:16px;}
+  .pm-row:last-child{border-bottom:none;}
+  .pm-label{color:var(--gray-600);font-weight:500;}.pm-value{color:var(--blue-900);font-weight:600;text-align:right;word-break:break-word;}
+  .modal-foot{padding:14px 22px 20px;}
+  .btn-logout-m{width:100%;justify-content:center;background:var(--red-50);color:var(--red-600);border:none;padding:10px;border-radius:7px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn-logout-m:hover{background:#f7dede;}
+
+  @media(max-width:700px){.grid-2{grid-template-columns:1fr;}.header-inner{flex-direction:column;align-items:stretch;gap:12px;}.header-right{justify-content:space-between;}.main{padding:22px 18px;}}
+</style>
+</head>
+<body>
+
+<!-- ===== หน้าล็อกอิน / สมัคร / แอดมิน ===== -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo-row">
+      <div class="login-logo"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12h8M12 8v8"/></svg></div>
+      <div><h2>ระบบยืม-คืนอุปกรณ์กายภาพบำบัด</h2><p>แผนกกายภาพบำบัด</p></div>
+    </div>
+
+    <!-- ล็อกอิน -->
+    <form class="auth-form active" id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="form-group"><label class="form-label">Username <span class="req">*</span></label><input type="text" class="form-control" id="loginUsername" placeholder="กรอก Username" autocomplete="username"></div>
+      <div class="form-group"><label class="form-label">รหัสผ่าน <span class="req">*</span></label><input type="password" class="form-control" id="loginPassword" placeholder="กรอกรหัสผ่าน" autocomplete="current-password"></div>
+      <div class="form-group"><label class="form-label">อีเมล <span class="req">*</span></label><input type="email" class="form-control" id="loginEmail" placeholder="กรอกอีเมลของคุณ" autocomplete="email"></div>
+      <div id="loginMsg"></div>
+      <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;margin-top:6px"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg> เข้าสู่ระบบ</button>
+      <div class="auth-toggle">ยังไม่มีบัญชี? <button type="button" onclick="toggleAuth('register')">สมัครสมาชิก</button></div>
+      <div class="admin-link-row"><a onclick="toggleAuth('admin')"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> เข้าสู่ระบบสำหรับผู้ดูแลระบบ</a></div>
+    </form>
+
+    <!-- สมัครสมาชิก -->
+    <form class="auth-form" id="registerForm" onsubmit="return handleRegister(event)">
+      <div class="form-group"><label class="form-label">คำนำหน้า <span class="req">*</span></label>
+        <select class="form-control" id="regTitle" required><option value="" disabled selected>เลือกคำนำหน้า</option><option value="นาย">นาย</option><option value="นางสาว">นางสาว</option></select></div>
+      <div class="form-group"><label class="form-label">ชื่อ - นามสกุล <span class="req">*</span></label><input type="text" class="form-control" id="regFullName" placeholder="กรอกชื่อของคุณ" autocomplete="name"></div>
+      <div class="form-group"><label class="form-label">วัน/เดือน/ปีเกิด <span class="req">*</span></label>
+        <div class="dob-wrap">
+          <input type="text" class="form-control" id="regDOBText" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10" oninput="formatDOB(event)">
+          <button type="button" class="dob-icon-btn" onclick="openDOBPicker()"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></button>
+          <input type="date" id="regDOBPicker" class="dob-native" tabindex="-1" onchange="syncDOBFromPicker(event)">
+        </div></div>
+      <div class="form-group"><label class="form-label">เบอร์โทร <span class="req">*</span></label><input type="tel" class="form-control" id="regPhone" placeholder="เช่น 0812345678" inputmode="numeric" maxlength="10"></div>
+      <div class="form-group"><label class="form-label">อีเมล <span class="req">*</span></label><input type="email" class="form-control" id="regEmail" placeholder="กรอกอีเมลที่ใช้งานจริง" autocomplete="email"></div>
+      <div class="form-group"><label class="form-label">Username <span class="req">*</span></label><input type="text" class="form-control" id="regUsername" placeholder="ตั้งชื่อผู้ใช้สำหรับเข้าสู่ระบบ" autocomplete="username"></div>
+      <div class="form-group"><label class="form-label">รหัสผ่าน <span class="req">*</span></label><input type="password" class="form-control" id="regPassword" placeholder="ตั้งรหัสผ่าน" autocomplete="new-password"></div>
+      <div class="form-group"><label class="form-label">ยืนยันรหัสผ่าน <span class="req">*</span></label><input type="password" class="form-control" id="regConfirmPassword" placeholder="ยืนยันรหัสผ่าน" autocomplete="new-password"></div>
+      <div id="registerMsg"></div>
+      <button type="submit" class="btn btn-primary" id="registerBtn" style="width:100%;justify-content:center;margin-top:6px"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6"/></svg> สมัครสมาชิก</button>
+      <div class="auth-toggle">มีบัญชีอยู่แล้ว? <button type="button" onclick="toggleAuth('login')">เข้าสู่ระบบ</button></div>
+    </form>
+
+    <!-- แอดมิน -->
+    <form class="auth-form" id="adminForm" onsubmit="return handleAdminLogin(event)">
+      <div class="form-group"><label class="form-label">รหัสผู้ดูแลระบบ <span class="req">*</span></label><input type="password" class="form-control" id="adminCodeInput" placeholder="กรอกรหัสผู้ดูแลระบบ" autocomplete="off"></div>
+      <div id="adminMsg"></div>
+      <button type="submit" class="btn btn-primary" id="adminBtn" style="width:100%;justify-content:center;margin-top:6px;background:var(--amber-600);"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/></svg> เข้าสู่แผงควบคุม</button>
+      <div class="auth-toggle"><button type="button" onclick="toggleAuth('login')">← กลับหน้าเข้าสู่ระบบ</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== ระบบหลัก ===== -->
+<div id="appRoot">
+<header>
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="header-logo"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12h8M12 8v8"/></svg></div>
+      <div class="header-title"><h1>ระบบยืม-คืนอุปกรณ์กายภาพบำบัด</h1><p>แผนกกายภาพบำบัด — เชื่อมต่อ Google Sheets</p></div>
+    </div>
+    <div class="header-right">
+      <div class="pill pill-user" id="userPill" onclick="openProfile()"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span id="userPillName">ผู้ใช้งาน</span></div>
+      <div class="pill pill-admin" id="adminPill" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/></svg> แอดมิน</div>
+      <button class="logout-btn" onclick="logout()"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg> ออกจากระบบ</button>
+      <div class="pill" id="syncLabel"><span class="sync-dot" style="background:#888"></span> โหลดข้อมูล...</div>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="grid-3">
+    <div class="stat-card"><div class="stat-label">อุปกรณ์ทั้งหมด (รวมชิ้น)</div><div class="stat-value" id="statTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">พร้อมให้ยืม</div><div class="stat-value" id="statAvail" style="color:var(--teal-600)">0</div></div>
+    <div class="stat-card"><div class="stat-label">กำลังถูกยืม</div><div class="stat-value" id="statBorrowed" style="color:var(--amber-600)">0</div></div>
+    <div class="stat-card"><div class="stat-label">รายการธุรกรรม</div><div class="stat-value" id="statTx" style="color:var(--blue-600)">0</div></div>
+  </div>
+
+  <div class="tabs" id="mainTabs">
+    <button class="tab-btn active" onclick="switchTab('borrow')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg> ยืมอุปกรณ์</button>
+    <button class="tab-btn" onclick="switchTab('return')"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7 7 7-7"/></svg> คืนอุปกรณ์</button>
+    <button class="tab-btn" onclick="switchTab('history')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ประวัติการยืม</button>
+    <button class="tab-btn" onclick="switchTab('admin')" id="adminTabBtn" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/></svg> จัดการระบบ</button>
+  </div>
+
+  <!-- ===== ยืม ===== -->
+  <div class="tab-panel active" id="tab-borrow">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h8m-8 6h16"/></svg> เลือกอุปกรณ์ที่ต้องการยืม</div>
+        <div class="equip-grid" id="equipGrid"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> รายละเอียดการยืม</div>
+        <div id="selectedEquipInfo" class="selected-equip-info" style="display:none"></div>
+        <div class="section-label">ผู้ยืม</div>
+        <div class="borrower-card">
+          <div class="bc-head"><div class="avatar" id="bcAvatar">–</div><div><div class="bc-name" id="bName">—</div><div class="bc-sub" id="bHandle">—</div></div></div>
+          <div class="bc-row"><span class="bl">เบอร์โทร</span><span class="bv" id="bPhone">—</span></div>
+          <div class="bc-hint"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg> ดึงจากบัญชีที่เข้าสู่ระบบโดยอัตโนมัติ</div>
+        </div>
+        <div class="section-label">ข้อมูลการยืม</div>
+        <div class="form-group"><label class="form-label">แผนก / หน่วยงาน <span class="req">*</span></label><input type="text" class="form-control" id="department" placeholder="เช่น หอผู้ป่วยใน 3"></div>
+        <div class="form-group"><label class="form-label">วัตถุประสงค์การยืม <span class="req">*</span></label>
+          <select class="form-control" id="purpose"><option value="" disabled selected>เลือกวัตถุประสงค์</option><option value="ใช้กับผู้ป่วย">ใช้กับผู้ป่วย</option><option value="ฝึกซ้อม / สาธิต">ฝึกซ้อม / สาธิต</option><option value="กิจกรรมนอกหน่วยงาน">กิจกรรมนอกหน่วยงาน</option><option value="อื่น ๆ">อื่น ๆ (ระบุในหมายเหตุ)</option></select></div>
+        <div class="form-group">
+          <label class="form-label">วันที่กำหนดคืน <span class="req">*</span></label>
+          <input type="date" class="form-control" id="dueDate" oninput="onDueInput()">
+          <div class="quick-row"><button type="button" class="chip" data-days="7" onclick="setDue(7)">7 วัน</button><button type="button" class="chip" data-days="14" onclick="setDue(14)">14 วัน</button><button type="button" class="chip" data-days="30" onclick="setDue(30)">30 วัน</button></div>
+          <div class="field-warn" id="dueWarn"><svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><span>ระยะเวลายืมเกิน 90 วัน</span></div>
+        </div>
+        <div class="form-group"><label class="form-label">หมายเหตุ</label><textarea class="form-control" id="borrowNote" rows="2" placeholder="ข้อมูลเพิ่มเติม (ถ้ามี)"></textarea></div>
+        <div class="condition-box">
+          <div class="cb-title"><svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg> เงื่อนไขการยืม</div>
+          <div class="cb-text">หากอุปกรณ์ชำรุดหรือสูญหายระหว่างการยืม ผู้ยืมยินดีรับผิดชอบค่าซ่อมแซมหรือชดใช้ตามความเสียหาย</div>
+          <label class="cb-check"><input type="checkbox" id="agreeTerms"><span>ข้าพเจ้ารับทราบและยอมรับเงื่อนไขข้างต้น</span></label>
+        </div>
+        <div id="borrowFormMsg"></div>
+        <button class="btn btn-primary" onclick="submitBorrow()" id="borrowBtn" style="width:100%;justify-content:center"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg> ยืนยันการยืม</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== คืน ===== -->
+  <div class="tab-panel" id="tab-return">
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7 7 7-7"/></svg> อุปกรณ์ที่คุณยืมและยังไม่ได้คืน</div>
+      <div id="returnList"></div>
+      <div id="returnMsg" style="margin-top:16px"></div>
+      <button class="btn btn-success" onclick="submitReturn()" id="returnBtn" style="margin-top:16px"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg> ยืนยันการคืนที่เลือก</button>
+    </div>
+  </div>
+
+  <!-- ===== ประวัติ ===== -->
+  <div class="tab-panel" id="tab-history">
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ประวัติการทำรายการ</div>
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <input type="text" class="form-control" id="searchHistory" style="max-width:240px" placeholder="ค้นหาชื่อผู้ยืม, อุปกรณ์" oninput="renderHistory()">
+        <select class="form-control" id="filterStatus" style="max-width:150px" onchange="renderHistory()"><option value="">ทุกสถานะ</option><option value="BORROW">กำลังยืม</option><option value="RETURN">คืนแล้ว</option></select>
+        <label class="my-toggle"><input type="checkbox" id="historyMine" onchange="renderHistory()"> เฉพาะของฉัน</label>
+      </div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>รหัส</th><th>วันที่ยืม</th><th>อุปกรณ์</th><th>ผู้ยืม</th><th>แผนก</th><th>วัตถุประสงค์</th><th>กำหนดคืน</th><th>สถานะ</th></tr></thead>
+        <tbody id="historyTbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ===== แอดมิน ===== -->
+  <div class="tab-panel" id="tab-admin">
+    <div class="grid-2" style="margin-bottom:24px">
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> เพิ่มอุปกรณ์ใหม่</div>
+        <div class="form-group"><label class="form-label">ชื่ออุปกรณ์ <span class="req">*</span></label><input type="text" class="form-control" id="newEqName" placeholder="เช่น เครื่องดึงหลัง (Traction)"></div>
+        <div class="form-group"><label class="form-label">รหัส (เว้นว่าง = อัตโนมัติ)</label><input type="text" class="form-control" id="newEqId" placeholder="เช่น PT-011"></div>
+        <div class="form-group"><label class="form-label">จำนวน (ชิ้น) <span class="req">*</span></label><input type="number" class="form-control" id="newEqQty" min="1" value="5"></div>
+        <div id="adminAddMsg"></div>
+        <button class="btn btn-primary" onclick="admAddEquip()" style="width:100%;justify-content:center;margin-top:4px"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> เพิ่มอุปกรณ์</button>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> สถานะการใช้งานอุปกรณ์</div>
+        <div id="adminEquipList"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ข้อมูลผู้ยืมทั้งหมด</div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>รหัส</th><th>ผู้ยืม</th><th>Username</th><th>แผนก</th><th>อุปกรณ์</th><th>วัตถุประสงค์</th><th>เบอร์</th><th>ยืมเมื่อ</th><th>กำหนดคืน</th><th>สถานะ</th></tr></thead>
+        <tbody id="adminTxTbody"></tbody>
+      </table></div>
+    </div>
+    <!-- ผู้บริจาค -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/></svg> เพิ่มข้อมูลผู้บริจาค</div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">ชื่อผู้บริจาค <span class="req">*</span></label><input type="text" class="form-control" id="dnName" placeholder="เช่น คุณสมศักดิ์ ใจบุญ"></div>
+        <div class="form-group"><label class="form-label">อุปกรณ์ที่บริจาค <span class="req">*</span></label><input type="text" class="form-control" id="dnItem" placeholder="เช่น Walker มาตรฐาน"></div>
+        <div class="form-group"><label class="form-label">จำนวน</label><input type="number" class="form-control" id="dnQty" min="1" value="1"></div>
+        <div class="form-group"><label class="form-label">ติดต่อ</label><input type="text" class="form-control" id="dnContact" placeholder="เบอร์หรือช่องทาง"></div>
+        <div class="form-group"><label class="form-label">วันที่บริจาค</label><input type="date" class="form-control" id="dnDate"></div>
+        <div class="form-group"><label class="form-label">หมายเหตุ</label><input type="text" class="form-control" id="dnNote" placeholder="ข้อมูลเพิ่มเติม"></div>
+      </div>
+      <div id="dnMsg"></div>
+      <button class="btn btn-primary" onclick="admAddDonor()" style="margin-top:4px"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> บันทึกผู้บริจาค</button>
+    </div>
+    <div class="card">
+      <div class="card-title"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/></svg> รายชื่อผู้บริจาค</div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>วันที่</th><th>ผู้บริจาค</th><th>อุปกรณ์</th><th>จำนวน</th><th>ติดต่อ</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="dnTbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- โมดัลโปรไฟล์ -->
+<div class="modal-overlay" id="profileModal" onclick="if(event.target===this)closeProfile()">
+  <div class="modal-card">
+    <div class="modal-head"><div class="avatar" id="pmAvatar">–</div><div><div class="modal-name" id="pmName">—</div><div class="modal-sub">บัญชีผู้ใช้งาน</div></div><button class="modal-close" onclick="closeProfile()">✕</button></div>
+    <div class="modal-body">
+      <div class="pm-row"><span class="pm-label">Username</span><span class="pm-value" id="pmUsername">—</span></div>
+      <div class="pm-row"><span class="pm-label">อีเมล</span><span class="pm-value" id="pmEmail">—</span></div>
+      <div class="pm-row"><span class="pm-label">เบอร์โทร</span><span class="pm-value" id="pmPhone">—</span></div>
+      <div class="pm-row"><span class="pm-label">วันเกิด</span><span class="pm-value" id="pmDob">—</span></div>
+    </div>
+    <div class="modal-foot"><button class="btn-logout-m" onclick="logout()">ออกจากระบบ</button></div>
+  </div>
+</div>
+</div>
+
+<script>
+const API_URL='https://script.google.com/macros/s/AKfycbzH8Y-CR4M94nbjG1VR8UN8mje-liHT7LgQQxIcgjNxl-oCbiq3UK1bCKThXShfR0CabA/exec';
+let currentUser=null,adminCode=null,currentRole='staff',pollHandle=null;
+let equipments=[],transactions=[],donors=[],selectedEquipId=null,boardLoaded=false;
+
+function hasGSR(){return typeof google!=='undefined'&&google.script&&google.script.run;}
+function runP(fn,arg){return new Promise(function(ok,ng){var r=google.script.run.withSuccessHandler(ok).withFailureHandler(ng);arg===undefined?r[fn]():r[fn](arg);});}
+function ld(d){var y=d.getFullYear(),m=('0'+(d.getMonth()+1)).slice(-2),dd=('0'+d.getDate()).slice(-2);return y+'-'+m+'-'+dd;}
+function addD(n){var d=new Date();d.setDate(d.getDate()+n);return ld(d);}
+function diffD(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+function fmtDOB(iso){var m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?(m[3]+'/'+m[2]+'/'+m[1]):(iso||'—');}
+function fmtDate(iso){if(!iso)return'-';var d=new Date(iso);return isNaN(d)?String(iso):d.toLocaleDateString('th-TH');}
+function initial(n){var s=String(n||'').trim();return s?s.charAt(0):'–';}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ====== ล็อกอิน / สมัคร ======
+function callAPI(p){
+  if(hasGSR()){if(p.action==='REGISTER')return runP('apiRegister',p);if(p.action==='LOGIN')return runP('apiLogin',p);return Promise.reject(new Error('unknown'));}
+  return fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)}).then(function(r){return r.json();});
+}
+function toggleAuth(mode){
+  ['loginForm','registerForm','adminForm'].forEach(function(id){document.getElementById(id).classList.remove('active');});
+  var map={login:'loginForm',register:'registerForm',admin:'adminForm'};
+  document.getElementById(map[mode]||'loginForm').classList.add('active');
+  showMsg('loginMsg','','');showMsg('registerMsg','','');showMsg('adminMsg','','');
+}
+function showMsg(elId,type,msg){
+  var el=document.getElementById(elId);if(!el)return;if(!msg){el.innerHTML='';return;}
+  var icon=type==='success'?'<path d="M5 12l5 5L20 7"/>':'<path d="M12 8v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>';
+  el.innerHTML='<div class="alert alert-'+type+'"><svg viewBox="0 0 24 24">'+icon+'</svg><span>'+msg+'</span></div>';
+}
+
+function formatDOB(e){var g=e.target.value.replace(/\D/g,'').slice(0,8),o=g.slice(0,2);if(g.length>2)o+='/'+g.slice(2,4);if(g.length>4)o+='/'+g.slice(4,8);e.target.value=o;}
+function openDOBPicker(){var p=document.getElementById('regDOBPicker');if(p.showPicker){try{p.showPicker();}catch(e){p.focus();}}else p.focus();}
+function syncDOBFromPicker(e){var v=e.target.value;if(!v)return;var p=v.split('-');document.getElementById('regDOBText').value=p[2]+'/'+p[1]+'/'+p[0];}
+function parseDOBToISO(t){var m=t.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);if(!m)return null;var d=+m[1],mo=+m[2],y=+m[3];if(mo<1||mo>12)return null;if(d<1||d>new Date(y,mo,0).getDate())return null;if(y<1900||y>new Date().getFullYear())return null;return m[3]+'-'+m[2]+'-'+m[1];}
+function isValidUsername(v){return/^[A-Za-z0-9_]{4,20}$/.test(v);}
+function isValidEmail(v){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}
+function isValidPhone(v){return/^0\d{8,9}$/.test(v);}
+
+async function handleRegister(e){
+  e.preventDefault();showMsg('registerMsg','','');
+  var title=document.getElementById('regTitle').value,fullName=document.getElementById('regFullName').value.trim(),
+    dobText=document.getElementById('regDOBText').value.trim(),phone=document.getElementById('regPhone').value.trim(),
+    email=document.getElementById('regEmail').value.trim(),username=document.getElementById('regUsername').value.trim(),
+    password=document.getElementById('regPassword').value,confirmPassword=document.getElementById('regConfirmPassword').value;
+  if(!title||!fullName||!dobText||!phone||!email||!username||!password||!confirmPassword)return showMsg('registerMsg','error','กรุณากรอกข้อมูลให้ครบทุกช่อง'),false;
+  if(!isValidUsername(username))return showMsg('registerMsg','error','Username ต้องมี 4-20 ตัว เป็นภาษาอังกฤษ ตัวเลข หรือ _ เท่านั้น'),false;
+  var dobISO=parseDOBToISO(dobText);if(!dobISO)return showMsg('registerMsg','error','รูปแบบวัน/เดือน/ปีเกิดไม่ถูกต้อง (วว/ดด/ปปปป)'),false;
+  if(!isValidPhone(phone))return showMsg('registerMsg','error','กรุณากรอกเบอร์โทรให้ถูกต้อง'),false;
+  if(!isValidEmail(email))return showMsg('registerMsg','error','กรุณากรอกอีเมลให้ถูกต้อง'),false;
+  if(password.length<6)return showMsg('registerMsg','error','รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'),false;
+  if(password!==confirmPassword)return showMsg('registerMsg','error','รหัสผ่านและการยืนยันไม่ตรงกัน'),false;
+  var btn=document.getElementById('registerBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> กำลังสมัคร...';
+  try{var r=await callAPI({action:'REGISTER',username:username,title:title,fullName:fullName,dob:dobISO,phone:phone,email:email,password:password});
+    if(r.success){showMsg('registerMsg','success',r.message||'สำเร็จ');document.getElementById('registerForm').reset();setTimeout(function(){toggleAuth('login');},1600);}
+    else showMsg('registerMsg','error',r.message||'ไม่สำเร็จ');
+  }catch(err){showMsg('registerMsg','error',(err&&err.message)?err.message:'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');}
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6"/></svg> สมัครสมาชิก';
+  return false;
+}
+
+async function handleLogin(e){
+  e.preventDefault();showMsg('loginMsg','','');
+  var username=document.getElementById('loginUsername').value.trim(),password=document.getElementById('loginPassword').value,email=document.getElementById('loginEmail').value.trim();
+  if(!username||!password||!email)return showMsg('loginMsg','error','กรุณากรอกข้อมูลให้ครบทุกช่อง'),false;
+  var btn=document.getElementById('loginBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> กำลังเข้าสู่ระบบ...';
+  try{var r=await callAPI({action:'LOGIN',username:username,password:password,email:email});
+    if(r.success)enterApp(r.user,false);else showMsg('loginMsg','error',r.message||'เข้าสู่ระบบไม่สำเร็จ');
+  }catch(err){showMsg('loginMsg','error',(err&&err.message)?err.message:'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');}
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg> เข้าสู่ระบบ';
+  return false;
+}
+
+async function handleAdminLogin(e){
+  e.preventDefault();showMsg('adminMsg','','');
+  var code=document.getElementById('adminCodeInput').value;
+  if(!code)return showMsg('adminMsg','error','กรุณากรอกรหัสผู้ดูแลระบบ'),false;
+  var btn=document.getElementById('adminBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> กำลังตรวจสอบ...';
+  try{
+    var res;
+    if(hasGSR()) res=await runP('apiAdminLogin',code);
+    else{var r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'ADMIN_LOGIN',adminCode:code})});res=await r.json();}
+    if(res.success){adminCode=code;enterApp(null,true);}
+    else showMsg('adminMsg','error',res.message||'รหัสไม่ถูกต้อง');
+  }catch(err){showMsg('adminMsg','error',(err&&err.message)?err.message:'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');}
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/></svg> เข้าสู่แผงควบคุม';
+  return false;
+}
+
+// ====== เข้า/ออกระบบ ======
+function enterApp(user,isAdmin){
+  currentUser=user;currentRole=isAdmin?'admin':'staff';
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appRoot').style.display='block';
+
+  var displayName=user?((user.title||'')+(user.fullName||'')):'ผู้ดูแลระบบ';
+  document.getElementById('userPillName').textContent=displayName;
+  document.getElementById('adminPill').style.display=isAdmin?'flex':'none';
+  document.getElementById('adminTabBtn').style.display=isAdmin?'flex':'none';
+  document.getElementById('userPill').style.display=user?'flex':'none';
+
+  if(user){
+    document.getElementById('bcAvatar').textContent=initial(user.fullName);
+    document.getElementById('bName').textContent=displayName;
+    document.getElementById('bHandle').textContent='@'+(user.username||'');
+    document.getElementById('bPhone').textContent=user.phone||'—';
+    document.getElementById('pmAvatar').textContent=initial(user.fullName);
+    document.getElementById('pmName').textContent=displayName;
+    document.getElementById('pmUsername').textContent=user.username||'—';
+    document.getElementById('pmEmail').textContent=user.email||'—';
+    document.getElementById('pmPhone').textContent=user.phone||'—';
+    document.getElementById('pmDob').textContent=fmtDOB(user.dob);
+  }
+
+  var due=document.getElementById('dueDate');due.min=ld(new Date());setDue(7);
+  switchTab(isAdmin?'admin':'borrow');
+  boardLoaded=false;equipments=[];updateUI();pullBoard();
+  if(pollHandle)clearInterval(pollHandle);pollHandle=setInterval(pullBoard,3000);
+  document.getElementById('loginForm').reset();document.getElementById('adminForm').reset();
+  showMsg('loginMsg','','');showMsg('adminMsg','','');
+  if(isAdmin){var dn=document.getElementById('dnDate');if(!dn.value)dn.value=ld(new Date());loadDonors();}
+}
+
+function logout(){
+  if(pollHandle){clearInterval(pollHandle);pollHandle=null;}
+  closeProfile();currentUser=null;adminCode=null;currentRole='staff';selectedEquipId=null;
+  document.getElementById('appRoot').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  toggleAuth('login');
+}
+function openProfile(){document.getElementById('profileModal').classList.add('show');}
+function closeProfile(){document.getElementById('profileModal').classList.remove('show');}
+
+// ====== ข้อมูล ======
+function isMyTrans(t){
+  if(!currentUser)return false;
+  if(t.username)return String(t.username).toLowerCase()===String(currentUser.username).toLowerCase();
+  return t.borrowerName===((currentUser.title||'')+(currentUser.fullName||''));
+}
+function getBorrowedCount(eqId){return transactions.filter(function(t){return t.equipId===eqId&&t.action==='BORROW'&&!t.returnedAt;}).length;}
+function getAvailQty(eq){if(eq.adminStatus==='damaged')return 0;return Math.max(0,eq.qty-getBorrowedCount(eq.id));}
+
+function switchTab(name){
+  if(name==='admin'&&currentRole!=='admin')return;
+  var tabs=document.querySelectorAll('#mainTabs .tab-btn'),ids=['borrow','return','history','admin'];
+  tabs.forEach(function(b,i){b.classList.toggle('active',ids[i]===name);});
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='history')renderHistory();if(name==='return')renderReturnList();
+  if(name==='admin'){renderAdminEquipList();renderAdminTx();loadDonors();}
+}
+
+function setDue(n){document.getElementById('dueDate').value=addD(n);document.querySelectorAll('#tab-borrow .quick-row .chip').forEach(function(c){c.classList.toggle('active',String(c.dataset.days)===String(n));});checkDue();}
+function onDueInput(){document.querySelectorAll('#tab-borrow .quick-row .chip').forEach(function(c){c.classList.remove('active');});checkDue();}
+function checkDue(){var v=document.getElementById('dueDate').value,w=document.getElementById('dueWarn');if(v&&diffD(ld(new Date()),v)>90)w.classList.add('show');else w.classList.remove('show');}
+
+async function pullBoard(){
+  try{
+    var board;
+    if(hasGSR())board=await runP('apiGetBoard');
+    else{var res=await fetch(API_URL+'?action=board');if(!res.ok)throw new Error('API Error');board=await res.json();}
+    var eqList=(board&&board.equipment)||[];
+    transactions=(board&&board.transactions)||[];
+    equipments=eqList.map(function(e){return{id:e.equipId,name:e.equipName,qty:e.qty||1,adminStatus:e.status};});
+    boardLoaded=true;
+    document.getElementById('syncLabel').innerHTML='<span class="sync-dot" style="background:#52c41a"></span> เชื่อมต่อฐานข้อมูลแล้ว';
+    updateUI();
+  }catch(err){console.error(err);document.getElementById('syncLabel').innerHTML='<span class="sync-dot" style="background:#faad14"></span> กำลังพยายามเชื่อมต่อ...';}
+}
+
+async function sendData(payload){
+  try{
+    if(hasGSR()){if(payload.action==='WEB_BORROW')await runP('apiBorrow',payload);else if(payload.action==='WEB_RETURN')await runP('apiReturn',payload);else return false;}
+    else{await fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});}
+    return true;
+  }catch(err){console.error(err);return false;}
+}
+
+// ====== ยืม ======
+async function submitBorrow(){
+  showMsg('borrowFormMsg','','');if(!currentUser)return showMsg('borrowFormMsg','error','กรุณาเข้าสู่ระบบก่อน');
+  var borrowerName=(currentUser.title||'')+(currentUser.fullName||''),phone=currentUser.phone||'';
+  var department=document.getElementById('department').value.trim(),purpose=document.getElementById('purpose').value,
+    dueDate=document.getElementById('dueDate').value,note=document.getElementById('borrowNote').value.trim(),
+    agreed=document.getElementById('agreeTerms').checked;
+  if(!selectedEquipId)return showMsg('borrowFormMsg','error','กรุณาเลือกอุปกรณ์');
+  var eq=equipments.find(function(e){return e.id===selectedEquipId;});
+  if(getAvailQty(eq)<=0){selectedEquipId=null;document.getElementById('selectedEquipInfo').style.display='none';renderEquipGrid();return showMsg('borrowFormMsg','error','อุปกรณ์ชิ้นนี้ถูกยืมครบจำนวนแล้ว');}
+  if(!department)return showMsg('borrowFormMsg','error','กรุณากรอกแผนก / หน่วยงาน');
+  if(!purpose)return showMsg('borrowFormMsg','error','กรุณาเลือกวัตถุประสงค์การยืม');
+  if(!dueDate)return showMsg('borrowFormMsg','error','กรุณาระบุวันที่กำหนดคืน');
+  if(dueDate<ld(new Date()))return showMsg('borrowFormMsg','error','วันที่กำหนดคืนต้องไม่เป็นวันที่ผ่านมาแล้ว');
+  if(!agreed)return showMsg('borrowFormMsg','error','กรุณายอมรับเงื่อนไขการยืมก่อน');
+  var btn=document.getElementById('borrowBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> กำลังบันทึก...';
+  var transId='TR-'+Date.now(),timestamp=new Date().toISOString();
+  var payload={action:'WEB_BORROW',transId:transId,timestamp:timestamp,equipId:eq.id,equipName:eq.name,borrowerName:borrowerName,username:currentUser.username,department:department,purpose:purpose,phone:phone,dueDate:dueDate,note:note};
+  transactions.unshift(Object.assign({},payload,{action:'BORROW',returnedAt:''}));updateUI();
+  await sendData(payload);
+  showMsg('borrowFormMsg','success','บันทึกการยืมเข้า Google Sheets สำเร็จ!');
+  document.getElementById('borrowNote').value='';selectedEquipId=null;document.getElementById('selectedEquipInfo').style.display='none';
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg> ยืนยันการยืม';
+  setTimeout(pullBoard,2000);
+}
+
+// ====== คืน ======
+async function submitReturn(){
+  var checked=[].slice.call(document.querySelectorAll('[id^="ret_"]:checked')).map(function(c){return c.value;});
+  if(checked.length===0)return showMsg('returnMsg','error','กรุณาเลือกรายการที่ต้องการคืน');
+  var btn=document.getElementById('returnBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> กำลังบันทึก...';showMsg('returnMsg','','');
+  var now=new Date().toISOString();
+  for(var i=0;i<checked.length;i++){
+    var t=transactions.find(function(x){return x.transId===checked[i];});if(t)t.returnedAt=now;
+    await sendData({action:'WEB_RETURN',targetTransId:checked[i],timestamp:now});
+  }
+  updateUI();showMsg('returnMsg','success','บันทึกการคืนอุปกรณ์สำเร็จ');
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg> ยืนยันการคืนที่เลือก';
+  setTimeout(pullBoard,2000);
+}
+
+// ====== แสดงผล ======
+function updateUI(){
+  var total=equipments.reduce(function(s,e){return s+e.qty;},0);
+  var avail=equipments.reduce(function(s,e){return s+getAvailQty(e);},0);
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statAvail').textContent=avail;
+  document.getElementById('statBorrowed').textContent=total-avail;
+  document.getElementById('statTx').textContent=transactions.length;
+  renderEquipGrid();renderReturnList();renderHistory();
+  if(currentRole==='admin'){renderAdminEquipList();renderAdminTx();}
+}
+
+function renderEquipGrid(){
+  var grid=document.getElementById('equipGrid');
+  if(!equipments.length){grid.innerHTML='<div class="empty-state">'+(boardLoaded?'ยังไม่มีอุปกรณ์ในระบบ':'กำลังโหลดอุปกรณ์...')+'</div>';return;}
+  grid.innerHTML=equipments.map(function(e){
+    var isDmg=e.adminStatus==='damaged',av=getAvailQty(e),isOut=av<=0,sel=e.id===selectedEquipId?' selected':'';
+    var cls=isDmg?' damaged':(isOut?' borrowed':'');
+    var click=isOut?'':"selectEquip('"+e.id+"')";
+    var statusHtml;
+    if(isDmg) statusHtml='<span class="equip-status damaged"><span class="equip-status-dot"></span>ชำรุด - งดให้ยืม</span>';
+    else if(isOut) statusHtml='<span class="equip-status borrowed"><span class="equip-status-dot"></span>ยืมครบจำนวนแล้ว</span>';
+    else statusHtml='<span class="equip-status available"><span class="equip-status-dot"></span>พร้อมให้ยืม '+av+'/'+e.qty+' ชิ้น</span>';
+    return '<div class="equip-card'+sel+cls+'" onclick="'+click+'"><div class="equip-name">'+esc(e.name)+'</div><div class="equip-id">'+esc(e.id)+'</div>'+statusHtml+'</div>';
+  }).join('');
+}
+function selectEquip(id){var eq=equipments.find(function(e){return e.id===id;});if(!eq||getAvailQty(eq)<=0)return;selectedEquipId=id;var info=document.getElementById('selectedEquipInfo');info.style.display='block';info.innerHTML='<strong>เลือกอุปกรณ์:</strong> '+esc(eq.name)+' ('+esc(eq.id)+') — เหลือ '+getAvailQty(eq)+'/'+eq.qty+' ชิ้น';renderEquipGrid();}
+
+function renderReturnList(){
+  var mine=transactions.filter(function(t){return t.action==='BORROW'&&!t.returnedAt&&isMyTrans(t);});
+  var el=document.getElementById('returnList');
+  if(mine.length===0){el.innerHTML='<div class="empty-state">คุณไม่มีอุปกรณ์ค้างคืนในระบบ</div>';return;}
+  var today=ld(new Date());
+  el.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>เลือก</th><th>รหัส</th><th>วันที่ยืม</th><th>อุปกรณ์</th><th>แผนก</th><th>กำหนดคืน</th></tr></thead><tbody>'+
+  mine.map(function(t){var od=t.dueDate&&t.dueDate<today;return '<tr><td><input type="checkbox" id="ret_'+esc(t.transId)+'" value="'+esc(t.transId)+'" style="width:16px;height:16px;cursor:pointer;accent-color:var(--teal-600)"></td><td style="font-size:11px;color:#888">'+esc(t.transId.substring(0,8))+'</td><td>'+fmtDate(t.timestamp)+'</td><td>'+esc(t.equipName)+'</td><td>'+esc(t.department||'-')+'</td><td><span class="badge '+(od?'badge-overdue':'badge-borrowed')+'">'+(od?'เกินกำหนด · ':'')+esc(t.dueDate||'-')+'</span></td></tr>';}).join('')+'</tbody></table></div>';
+}
+
+function renderHistory(){
+  var search=document.getElementById('searchHistory').value.toLowerCase(),filter=document.getElementById('filterStatus').value,
+    mineOnly=document.getElementById('historyMine').checked,today=ld(new Date());
+  var list=transactions.slice();
+  if(mineOnly)list=list.filter(isMyTrans);
+  if(search)list=list.filter(function(t){return(t.borrowerName||'').toLowerCase().indexOf(search)>=0||(t.equipName||'').toLowerCase().indexOf(search)>=0;});
+  if(filter)list=list.filter(function(t){return filter==='BORROW'?!t.returnedAt:!!t.returnedAt;});
+  var tb=document.getElementById('historyTbody');
+  if(list.length===0){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888;padding:22px">ไม่พบรายการ</td></tr>';return;}
+  tb.innerHTML=list.map(function(t){
+    var badge;if(t.returnedAt)badge='<span class="badge badge-returned">คืนแล้ว</span>';else if(t.dueDate&&t.dueDate<today)badge='<span class="badge badge-overdue">เกินกำหนด</span>';else badge='<span class="badge badge-borrowed">กำลังยืม</span>';
+    return '<tr><td style="font-size:11px;color:#888">'+esc(t.transId.substring(0,8))+'</td><td>'+fmtDate(t.timestamp)+'</td><td>'+esc(t.equipName)+'</td><td>'+esc(t.borrowerName)+'</td><td>'+esc(t.department||'-')+'</td><td>'+esc(t.purpose||'-')+'</td><td>'+esc(t.dueDate||'-')+'</td><td>'+badge+'</td></tr>';
+  }).join('');
+}
+
+// ====== แอดมิน ======
+function callAdminAPI(fnName,actionName,payload){
+  if(hasGSR())return runP(fnName,payload);
+  payload.action=actionName;
+  return fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}).then(function(r){return r.json();});
+}
+function renderAdminEquipList(){
+  var el=document.getElementById('adminEquipList');if(!el)return;
+  if(!equipments.length){el.innerHTML='<div class="empty-state">ยังไม่มีอุปกรณ์</div>';return;}
+  el.innerHTML=equipments.map(function(e){
+    var isDmg=e.adminStatus==='damaged',av=getAvailQty(e),bc=getBorrowedCount(e.id);
+    var statusBtn=isDmg?'<button class="btn-sm btn-ok" onclick="admToggleStatus(\''+esc(e.id)+'\')">ปรับเป็นพร้อมใช้งาน</button>'
+      :(bc>0?'<span style="font-size:11px;color:var(--gray-400)">กำลังถูกยืม '+bc+' ชิ้น</span>':'<button class="btn-sm btn-damaged" onclick="admToggleStatus(\''+esc(e.id)+'\')">แจ้งชำรุด</button>');
+    return '<div class="admin-row"><div><div class="admin-row-name">'+esc(e.name)+'</div><div class="admin-row-id">'+esc(e.id)+' • พร้อมให้ยืม '+av+'/'+e.qty+' ชิ้น</div></div><div class="act-btns">'+statusBtn+' <button class="btn-sm btn-edit" onclick="admEditQty(\''+esc(e.id)+'\')">แก้ไขจำนวน</button> <button class="btn-sm btn-del" onclick="admDeleteEquip(\''+esc(e.id)+'\')">ลบ</button></div></div>';
+  }).join('');
+}
+
+function renderAdminTx(){
+  var tb=document.getElementById('adminTxTbody');if(!tb)return;
+  if(!transactions.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:#888;padding:22px">ยังไม่มีรายการ</td></tr>';return;}
+  var today=ld(new Date());
+  tb.innerHTML=transactions.map(function(t){
+    var badge;if(t.returnedAt)badge='<span class="badge badge-returned">คืนแล้ว</span>';else if(t.dueDate&&t.dueDate<today)badge='<span class="badge badge-overdue">เกินกำหนด</span>';else badge='<span class="badge badge-borrowed">กำลังยืม</span>';
+    return '<tr><td style="font-size:11px;color:#888">'+esc(t.transId.substring(0,8))+'</td><td>'+esc(t.borrowerName)+'</td><td>'+esc(t.username||'-')+'</td><td>'+esc(t.department||'-')+'</td><td>'+esc(t.equipName)+'</td><td>'+esc(t.purpose||'-')+'</td><td>'+esc(t.phone||'-')+'</td><td>'+fmtDate(t.timestamp)+'</td><td>'+esc(t.dueDate||'-')+'</td><td>'+badge+'</td></tr>';
+  }).join('');
+}
+
+async function admAddEquip(){
+  showMsg('adminAddMsg','','');var name=document.getElementById('newEqName').value.trim(),id=document.getElementById('newEqId').value.trim(),qty=document.getElementById('newEqQty').value;
+  if(!name)return showMsg('adminAddMsg','error','กรุณากรอกชื่ออุปกรณ์');
+  try{var res=await callAdminAPI('apiAddEquipment','ADD_EQUIPMENT',{adminCode:adminCode,equipName:name,equipId:id,qty:qty});
+    if(res.success){showMsg('adminAddMsg','success',res.message);document.getElementById('newEqName').value='';document.getElementById('newEqId').value='';document.getElementById('newEqQty').value='5';await pullBoard();}
+    else showMsg('adminAddMsg','error',res.message);
+  }catch(err){showMsg('adminAddMsg','error','เชื่อมต่อไม่สำเร็จ');}
+}
+
+async function admToggleStatus(id){
+  var eq=equipments.find(function(e){return e.id===id;});if(!eq)return;
+  var newSt=eq.adminStatus==='damaged'?'available':'damaged';
+  try{var res=await callAdminAPI('apiSetEquipmentStatus','SET_EQUIPMENT_STATUS',{adminCode:adminCode,equipId:id,status:newSt});
+    if(!res.success)showMsg('adminAddMsg','error',res.message);await pullBoard();
+  }catch(err){showMsg('adminAddMsg','error','เชื่อมต่อไม่สำเร็จ');}
+}
+
+async function admEditQty(id){
+  var eq=equipments.find(function(e){return e.id===id;});if(!eq)return;
+  var bc=getBorrowedCount(id);
+  var msg='จำนวนทั้งหมดของ "'+eq.name+'" (ปัจจุบัน '+eq.qty+' ชิ้น)'+(bc>0?'\n(กำลังถูกยืมอยู่ '+bc+' ชิ้น — จำนวนใหม่ต้องไม่น้อยกว่านี้)':'');
+  var input=prompt(msg,eq.qty);
+  if(input===null)return;
+  var newQty=parseInt(input,10);
+  if(isNaN(newQty)||newQty<1)return showMsg('adminAddMsg','error','กรุณากรอกจำนวนเป็นตัวเลขที่มากกว่า 0');
+  if(newQty<bc)return showMsg('adminAddMsg','error','จำนวนใหม่ต้องไม่น้อยกว่าจำนวนที่กำลังถูกยืมอยู่ ('+bc+' ชิ้น)');
+  if(newQty===eq.qty)return;
+  try{var res=await callAdminAPI('apiSetEquipmentQty','SET_EQUIPMENT_QTY',{adminCode:adminCode,equipId:id,qty:newQty});
+    if(res.success)showMsg('adminAddMsg','success',res.message||'แก้ไขจำนวนสำเร็จ');else showMsg('adminAddMsg','error',res.message);
+    await pullBoard();
+  }catch(err){showMsg('adminAddMsg','error','เชื่อมต่อไม่สำเร็จ');}
+}
+
+async function admDeleteEquip(id){
+  if(!confirm('ต้องการลบอุปกรณ์นี้ออกจากระบบ?'))return;
+  try{var res=await callAdminAPI('apiDeleteEquipment','DELETE_EQUIPMENT',{adminCode:adminCode,equipId:id});
+    if(res.success)showMsg('adminAddMsg','success',res.message);else showMsg('adminAddMsg','error',res.message);await pullBoard();
+  }catch(err){showMsg('adminAddMsg','error','เชื่อมต่อไม่สำเร็จ');}
+}
+
+async function loadDonors(){
+  if(!adminCode)return;
+  try{
+    var res=hasGSR()?await runP('apiGetDonors',adminCode):await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'GET_DONORS',adminCode:adminCode})}).then(function(r){return r.json();});
+    donors=(res&&res.success&&res.donors)||[];renderDonors();
+  }catch(err){console.error(err);}
+}
+function renderDonors(){
+  var tb=document.getElementById('dnTbody');if(!tb)return;
+  if(!donors.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#888;padding:22px">ยังไม่มีข้อมูลผู้บริจาค</td></tr>';return;}
+  tb.innerHTML=donors.map(function(d){return '<tr><td>'+(d.donatedAt?fmtDate(d.donatedAt):'-')+'</td><td style="font-weight:600;color:var(--blue-900)">'+esc(d.donorName)+'</td><td>'+esc(d.itemName)+'</td><td>'+esc(d.quantity||'-')+'</td><td>'+esc(d.contact||'-')+'</td><td>'+esc(d.note||'-')+'</td></tr>';}).join('');
+}
+async function admAddDonor(){
+  showMsg('dnMsg','','');var donorName=document.getElementById('dnName').value.trim(),itemName=document.getElementById('dnItem').value.trim();
+  if(!donorName||!itemName)return showMsg('dnMsg','error','กรุณากรอกชื่อผู้บริจาคและอุปกรณ์');
+  try{var res=await callAdminAPI('apiAddDonor','ADD_DONOR',{adminCode:adminCode,donorName:donorName,itemName:itemName,quantity:document.getElementById('dnQty').value,contact:document.getElementById('dnContact').value.trim(),donatedAt:document.getElementById('dnDate').value,note:document.getElementById('dnNote').value.trim()});
+    if(res.success){showMsg('dnMsg','success',res.message);['dnName','dnItem','dnContact','dnNote'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('dnQty').value='1';await loadDonors();}
+    else showMsg('dnMsg','error',res.message);
+  }catch(err){showMsg('dnMsg','error','เชื่อมต่อไม่สำเร็จ');}
+}
+</script>
+</body>
+</html>
